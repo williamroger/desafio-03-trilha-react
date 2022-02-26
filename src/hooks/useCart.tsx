@@ -34,38 +34,36 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   const addProduct = async (productId: number) => {
     try {
-      const product  = await api.get(`products/${productId}`)
-        .then(response => response.data);
-
+      const updateCart = [...cart];
+      const productExists = updateCart.find(product => product.id === productId);
+      
       const {amount: stockAmount} = await api.get(`stock/${productId}`)
         .then(response => response.data);
 
-      const productInCart = cart.find(product => product.id === productId);
+      const currentAmount = productExists ? productExists.amount : 0;
+      const amount = currentAmount + 1;
 
-      if (productInCart) {
-        if (productInCart?.amount >= stockAmount) {
-          toast.error('Quantidade solicitada fora de estoque');
-          return;
-        }
-
-        product.amount = productInCart.amount + 1;
-        const newCart = cart.filter(product => product.id !== productId);
-
-        setCart([
-          ...newCart,
-          product
-        ]);
-       
-        localStorage.setItem('@RocketShoes:cart', JSON.stringify([...newCart, product]));
-      } else {
-        product.amount = 1;
-        setCart(state => [
-          ...state,
-          product
-        ]);
-        
-        localStorage.setItem('@RocketShoes:cart', JSON.stringify([...cart, product]));
+      if (amount > stockAmount) {
+        toast.error('Quantidade solicitada fora de estoque');
+        return;
       }
+
+      if (productExists) {
+        productExists.amount = amount;
+      } else {
+        const product  = await api.get(`products/${productId}`)
+          .then(response => response.data);
+        
+        const newProduct = {
+          ...product,
+          amount: 1,
+        };
+
+        updateCart.push(newProduct);
+      }
+
+      setCart(updateCart);
+      localStorage.setItem('@RocketShoes:cart', JSON.stringify(updateCart));
     } catch {
       toast.error('Erro na adição do produto');
     }
